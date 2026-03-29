@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBA Question Bank - Pro Version</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.9rem; }
+        .answer-box { display: none; background-color: #fff; padding: 10px; border-radius: 6px; margin-top: 8px; border-left: 4px solid #0d6efd; box-shadow: inset 0 0 3px rgba(0,0,0,0.1); }
+        .ticked { border: 2px solid #198754 !important; background-color: #e8f5e9; }
+        .card { margin-bottom: 12px; border: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-body { padding: 12px; }
+        .card-title { font-size: 1rem; margin-bottom: 8px; font-weight: 600; }
+        .exam-user-answer { margin-top: 10px; border-radius: 6px; font-size: 0.9rem; }
+        .btn-sm { font-size: 0.8rem; padding: 4px 8px; }
+        .action-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+        .ai-text { color: #055160; background-color: #cff4fc; padding: 8px; border-radius: 4px; border-left: 4px solid #0dcaf0; margin-top: 5px; display: none; }
+        .stat-badge { font-size: 0.9rem; padding: 6px 12px; }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    <h2 class="text-center mb-2 text-primary fw-bold">MBA Short Questions Practice</h2>
+    <div class="text-center mb-4">
+        <span class="badge bg-secondary stat-badge">মোট প্রশ্ন: <span id="total-q-count">0</span> টি</span>
+        <span class="badge bg-danger stat-badge ms-2">ভুল উত্তর পুলে আছে: <span id="wrong-q-count">0</span> টি</span>
+    </div>
+
+    <div id="study-mode">
+        <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-white rounded shadow-sm flex-wrap gap-2">
+            <button id="toggle-all-answers" class="btn btn-sm btn-warning">সব উত্তর দেখুন</button>
+            <div class="d-flex gap-2">
+                <button id="start-exam-btn" class="btn btn-sm btn-primary">সব প্রশ্ন থেকে পরীক্ষা</button>
+                <button id="start-wrong-exam-btn" class="btn btn-sm btn-danger">ভুল উত্তরগুলোর পরীক্ষা</button>
+            </div>
+        </div>
+        
+        <div id="question-list"></div>
+    </div>
+
+    <div id="exam-mode" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-white rounded shadow-sm">
+            <h5 class="m-0 text-danger fw-bold">Exam Mode <span id="exam-set-info" class="badge bg-dark ms-2">Set 1/5</span></h5>
+            <button id="end-exam-btn" class="btn btn-sm btn-secondary">পরীক্ষা বাতিল করুন</button>
+        </div>
+        
+        <div id="exam-question-list"></div>
+
+        <div class="text-center mt-4 mb-5" id="exam-controls">
+            <button id="finish-set-btn" class="btn btn-success px-4 py-2 fw-bold">সেট শেষ করুন ও স্কোর দেখুন</button>
+        </div>
+        
+        <div id="score-board" style="display:none;" class="alert alert-info text-center">
+            <h4>আপনার স্কোর: <span id="current-score">0</span> / <span id="set-total">0</span></h4>
+            <p class="mb-2 text-muted">ভুল উত্তরগুলো স্বয়ংক্রিয়ভাবে পুলে যোগ করা হয়েছে।</p>
+            <button id="next-set-btn" class="btn btn-primary">পরবর্তী সেট শুরু করুন</button>
+            <button id="back-to-study-btn" class="btn btn-outline-secondary">স্টাডি মোডে ফিরুন</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    // আপনার সম্পূর্ণ ১০৪ টি প্রশ্নের ডাটাবেজ
+    const qaData = [
+        { id: 1, year: "২০১৪", q: "ব্যবস্থাপনা চিন্তাধারা কী?", a: "ব্যবস্থাপনাবিষয়ক জ্ঞানের উৎপত্তি ও ক্রমবিকাশ অনুসারে ব্যবস্থাপনাবিদগণের দৃষ্টিভঙ্গি ও ধারণাসমূহের সুশৃঙ্খল বিন্যাসকে ব্যবস্থাপনা চিন্তাধারা বলে।" },
+        { id: 2, year: "২০১৪", q: "ব্যবস্থাপনায় নব-ধ্রুপদী মতবাদ বলতে কী বুঝায়?", a: "যে মতবাদে মানবীয় উপাদান অর্থাৎ ব্যক্তিগত নিরাপত্তা ও সামাজিক চাহিদার উপর গুরুত্ব দেয়া হয়, তাকে নব-ধ্রুপদী মতবাদ বলে।" },
+        { id: 3, year: "২০১৪", q: "প্রশাসনিক ব্যবস্থাপনার জনক কে?", a: "প্রশাসনিক ব্যবস্থাপনার জনক হলেন ফরাসি শিল্পপতি হেনরি ফেয়ল।" },
+        { id: 4, year: "২০১৪", q: "পেশা কী?", a: "পেশা হলো বিশেষ জ্ঞান বা শিক্ষাসম্পন্ন এমন একটি বৃত্তি যেখানে উক্ত বিশেষ জ্ঞান বা শিক্ষা ব্যবহার করে সাধারণ মানুষের সেবা প্রদান করে অর্থ উপার্জন করা হয়।" },
+        { id: 5, year: "২০১৪", q: "X ও Y তত্ত্বের প্রবক্তা কে?", a: "X ও Y তত্ত্বের প্রবক্তা হলেন ডগলাস ম্যাকগ্রেগর (Douglas McGregor)।" },
+        { id: 6, year: "২০১৪", q: "আমলাতন্ত্র কী?", a: "নৈর্ব্যক্তিকতা, লিখিত বিধি এবং দপ্তরের সোপানের ভিত্তিতে সংগঠনের যে প্রশাসন গঠিত হয় তাকে আমলাতন্ত্র বলে।" },
+        { id: 7, year: "২০১৪", q: "অব্যক্তিক ব্যবস্থা কী?", a: "যে ব্যবস্থায় প্রশাসন বা ব্যবস্থাপনায় নিয়োজিত ব্যক্তি বা কর্মকর্তাদের ব্যক্তিগত পছন্দ-অপছন্দ, আবেগ-অনুভূতি, আত্মীয়তা ইত্যাদির কোনো প্রভাব থাকে না, তাকে অব্যক্তিক ব্যবস্থা বলে।" },
+        { id: 8, year: "২০১৪", q: "প্রেষণার দ্বি-উপাদান তত্ত্বের প্রবক্তা কে?", a: "প্রেষণার দ্বি-উপাদান তত্ত্বের প্রবক্তা হলেন ফ্রেডরিক হার্জবার্গ (Frederick Herzberg)।" },
+        { id: 9, year: "২০১৪", q: "ব্যবস্থাপনা গ্রিড কে উদ্ভাবন করেন?", a: "রবার্ট আর. ব্লেক (Robert R. Blake) এবং জেন এস. মাউটন (Jane S. Mouton) ব্যবস্থাপনা গ্রিড উদ্ভাবন করেন।" },
+        { id: 10, year: "২০১৪", q: "কর্মীসংস্থান কী?", a: "সংগঠনের বিভিন্ন পদের জন্য উপযুক্ত কর্মী সংগ্রহ, নির্বাচন, নিয়োগ, প্রশিক্ষণ, উন্নয়ন, মূল্যায়ন ও অবসরের সামগ্রিক কাজকে কর্মীসংস্থান বলে।" },
+        { id: 11, year: "২০১৫", q: "ব্যবস্থাপনা কী?", a: "অন্যকে দিয়ে কাজ করিয়ে নেওয়ার কৌশল বা প্রক্রিয়াই হলো ব্যবস্থাপনা।" },
+        { id: 12, year: "২০১৫", q: "বৈজ্ঞানিক ব্যবস্থাপনার জনক কে?", a: "বৈজ্ঞানিক ব্যবস্থাপনার জনক হলেন এফ. ডব্লিউ. টেইলর (F.W. Taylor)।" },
+        { id: 13, year: "২০১৫", q: "'Esprit de corps' অর্থ কী?", a: "'Esprit de corps' এর অর্থ হলো 'একতাই বল' (Union is strength)।" },
+        { id: 14, year: "২০১৫", q: "প্রেষণার দ্বি-উপাদান তত্ত্বের প্রবক্তা কে?", a: "প্রেষণার দ্বি-উপাদান তত্ত্বের প্রবক্তা হলেন ফ্রেডরিক হার্জবার্গ (Frederick Herzberg)।" },
+        { id: 15, year: "২০১৫", q: "কার্যভিত্তিক সংগঠন কী?", a: "প্রতিষ্ঠানের কাজগুলোকে প্রকৃতি অনুযায়ী বিভিন্ন ভাগে ভাগ করে একেকটি বিভাগের দায়িত্ব একজন বিশেষজ্ঞের ওপর অর্পণ করা হলে তাকে কার্যভিত্তিক সংগঠন বলে।" },
+        { id: 16, year: "২০১৫", q: "সিদ্ধান্ত গ্রহণ কী?", a: "একাধিক বিকল্প কার্যপন্থার মধ্য থেকে সর্বোত্তম বিকল্পটি নির্বাচন করার প্রক্রিয়াকে সিদ্ধান্ত গ্রহণ বলে।" },
+        { id: 17, year: "২০১৫", q: "নিয়ন্ত্রণ কী?", a: "গৃহীত পরিকল্পনা, জারি করা নির্দেশনা এবং প্রতিষ্ঠিত নীতি অনুযায়ী কাজগুলো সম্পাদিত হচ্ছে কিনা তা পরীক্ষা করে দেখা এবং প্রয়োজনে সংশোধনমূলক ব্যবস্থা গ্রহণ করাকে নিয়ন্ত্রণ বলে।" },
+        { id: 18, year: "২০১৫", q: "প্রশাসনিক ব্যবস্থাপনার জনক কে?", a: "প্রশাসনিক ব্যবস্থাপনার জনক হলেন ফরাসি শিল্পপতি হেনরি ফেয়ল (Henri Fayol)।" },
+        { id: 19, year: "২০১৫", q: "আমলাতন্ত্র কী?", a: "নৈর্ব্যক্তিকতা, লিখিত বিধি এবং দপ্তরের সোপানের ভিত্তিতে সংগঠনের যে প্রশাসন গঠিত হয় তাকে আমলাতন্ত্র বলে।" },
+        { id: 20, year: "২০১৫", q: "স্বৈরতান্ত্রিক নেতৃত্ব কী?", a: "যে নেতৃত্ব ব্যবস্থায় নেতা ক্ষমতা ও কর্তৃত্ব নিজের কাছে কুক্ষিগত করে রাখেন এবং অধস্তনদের মতামতের কোনো তোয়াক্কা না করে একাই সব সিদ্ধান্ত নেন, তাকে স্বৈরতান্ত্রিক নেতৃত্ব বলে।" },
+        { id: 21, year: "২০১৬", q: "ব্যবস্থাপনা চিন্তাধারা কী?", a: "ব্যবস্থাপনাবিষয়ক জ্ঞানের উৎপত্তি ও ক্রমবিকাশ অনুসারে ব্যবস্থাপনাবিদগণের দৃষ্টিভঙ্গি ও ধারণাসমূহের সুশৃঙ্খল বিন্যাসকে ব্যবস্থাপনা চিন্তাধারা বলে।" },
+        { id: 22, year: "২০১৬", q: "হেনরি ফেয়লের ইংরেজিতে প্রকাশিত বিখ্যাত গ্রন্থটির নাম কী?", a: "হেনরি ফেয়লের প্রকাশিত গ্রন্থটির নাম হলো- General and Industrial Management." },
+        { id: 23, year: "২০১৬", q: "আমলাতন্ত্র কী?", a: "নৈর্ব্যক্তিকতা, লিখিত বিধি এবং দপ্তরের সোপানের ভিত্তিতে সংগঠনের যে প্রশাসন গঠিত হয় তাকে আমলাতন্ত্র বলে।" },
+        { id: 24, year: "২০১৬", q: "X ও Y তত্ত্বের প্রবক্তা কে?", a: "ডগলাস ম্যাকগ্রেগর।" },
+        { id: 25, year: "২০১৬", q: "বৈজ্ঞানিক ব্যবস্থাপনা কী?", a: "গতানুগতিক অবৈজ্ঞানিক ও বিশৃঙ্খলাপূর্ণ রীতিনীতির পরিবর্তে সুচিন্তিত ও বিজ্ঞানভিত্তিক পদ্ধতি প্রবর্তনের মাধ্যমে গঠনমূলক প্রক্রিয়ায় ব্যবস্থাপনার প্রতিটি কাজকে পরিকল্পিতভাবে লক্ষ্যার্জনের পথে পরিচালিত করাকেই বৈজ্ঞানিক ব্যবস্থাপনা বলে।" },
+        { id: 26, year: "২০১৬", q: "BIM -এর পূর্ণরূপ লিখ।", a: "BIM = Bangladesh Institute of Management." },
+        { id: 27, year: "২০১৬", q: "নব্য-ধ্রুপদী মতবাদ বলতে কী বুঝায়?", a: "যে মতবাদে মানবীয় উপাদান অর্থাৎ ব্যক্তিগত নিরাপত্তা ও সামাজিক চাহিদার উপর গুরুত্ব দেয়া হয়, তাকে নব্য-ধ্রুপদী মতবাদ বলে।" },
+        { id: 28, year: "২০১৬", q: "আমলাতন্ত্রের জনক কে?", a: "আমলাতন্ত্রের জনক হলেন ম্যাক্স ওয়েবার (Max Weber)।" },
+        { id: 29, year: "২০১৬", q: "ব্যবস্থাপনা গ্রিড কে উদ্ভাবন করেন?", a: "রবার্ট আর. ব্লেক (Robert R. Blake) এবং জেন এস. মাউটন (Jane S. Mouton) ব্যবস্থাপনা গ্রিড উদ্ভাবন করেন।" },
+        { id: 30, year: "২০১৬", q: "TQM-এর পূর্ণরূপ কী?", a: "TQM-এর পূর্ণরূপ হলো Total Quality Management (সার্বিক মান ব্যবস্থাপনা)।" },
+        { id: 31, year: "২০১৬", q: "প্রেষণা কী?", a: "কর্মীদের কাজের প্রতি আগ্রহী ও উৎসাহিত করার প্রক্রিয়াকেই প্রেষণা বা Motivation বলে।" },
+        { id: 32, year: "২০১৬", q: "MBO-এর পূর্ণরূপ কী?", a: "MBO = Management by Objectives (উদ্দেশ্যভিত্তিক ব্যবস্থাপনা)।" },
+        { id: 33, year: "২০১৭", q: "প্রেষণা কী?", a: "কর্মীদের কাজের প্রতি আগ্রহী ও উৎসাহিত করার প্রক্রিয়াকেই প্রেষণা বা Motivation বলে।" },
+        { id: 34, year: "২০১৭", q: "POSDCORB-এর প্রবক্তা কে?", a: "লুথার গুলিক (Luther Gulick) এবং লিন্ডাল উরউইক (Lyndall Urwick)।" },
+        { id: 35, year: "২০১৭", q: "'The Principles of Scientific Management' বইটির লেখক কে?", a: "এফ. ডব্লিউ. টেইলর (F.W. Taylor)।" },
+        { id: 36, year: "২০১৭", q: "MBO-এর পূর্ণরূপ কী?", a: "MBO = Management by Objectives (উদ্দেশ্যভিত্তিক ব্যবস্থাপনা)।" },
+        { id: 37, year: "২০১৭", q: "হথর্ন গবেষণা (Hawthorne Studies) কোথায় পরিচালিত হয়েছিল?", a: "যুক্তরাষ্ট্রের শিকাগো শহরের ওয়েস্টার্ন ইলেকট্রিক কোম্পানির হথর্ন কারখানায়।" },
+        { id: 38, year: "২০১৭", q: "সিদ্ধান্ত গ্রহণ কী?", a: "কোনো নির্দিষ্ট লক্ষ্য অর্জনের জন্য একাধিক বিকল্প কার্যপন্থা থেকে সর্বোত্তম বিকল্পটি বেছে নেওয়ার প্রক্রিয়াকেই সিদ্ধান্ত গ্রহণ বলে।" },
+        { id: 39, year: "২০১৭", q: "বিকেন্দ্রীকরণ বলতে কী বোঝায়?", a: "উচ্চস্তর থেকে নিম্নস্তর পর্যন্ত ব্যবস্থাপনার বিভিন্ন স্তরে সিদ্ধান্ত গ্রহণের ক্ষমতা বা কর্তৃত্ব অর্পণ করার প্রক্রিয়াকে বিকেন্দ্রীকরণ বলে।" },
+        { id: 40, year: "২০১৭", q: "আধুনিক ব্যবস্থাপনার জনক কে?", a: "আধুনিক ব্যবস্থাপনার জনক হলেন ফরাসি শিল্পপতি হেনরি ফেয়ল (Henri Fayol)।" },
+        { id: 41, year: "২০১৭", q: "ব্যবস্থাপনা গ্রিড (Managerial Grid) কে উদ্ভাবন করেন?", a: "রবার্ট আর. ব্লেক (Robert R. Blake) এবং জেন এস. মাউটন (Jane S. Mouton)।" },
+        { id: 42, year: "২০১৭", q: "স্বৈরতান্ত্রিক নেতৃত্ব কী?", a: "যে নেতৃত্ব ব্যবস্থায় নেতা ক্ষমতা ও কর্তৃত্ব নিজের কাছে কুক্ষিগত করে রাখেন এবং অধস্তনদের মতামতের কোনো তোয়াক্কা না করে একাই সব সিদ্ধান্ত নেন, তাকে স্বৈরতান্ত্রিক নেতৃত্ব বলে।" },
+        { id: 43, year: "২০১৭", q: "TQM-এর পূর্ণরূপ কী?", a: "TQM = Total Quality Management (সার্বিক মান ব্যবস্থাপনা)।" },
+        { id: 44, year: "২০১৭", q: "মানচক্র (Quality Circle) কী?", a: "মানচক্র হলো একই ধরনের কাজে নিযুক্ত একদল কর্মীর স্বেচ্ছাপ্রণোদিত একটি ছোট দল, যারা কাজের মান উন্নয়ন ও সমস্যা সমাধানের জন্য নিয়মিতভাবে সভায় মিলিত হয়।" },
+        { id: 45, year: "২০১৮", q: "আধুনিক ব্যবস্থাপনার জনক কে?", a: "আধুনিক ব্যবস্থাপনার জনক হলেন হেনরি ফেয়ল (Henri Fayol)।" },
+        { id: 46, year: "২০১৮", q: "'The Philosophy of Management' বইটির রচয়িতা কে?", a: "'The Philosophy of Management' বইটির রচয়িতা হলেন অলিভার শেলডন (Oliver Sheldon)।" },
+        { id: 47, year: "২০১৮", q: "থারবলিগস (Therbligs) কী?", a: "ফ্র্যাংক গিলব্রেথ ও লিলিয়ান গিলব্রেথ কাজের গতি ও সময়কে বিশ্লেষণ করে ১৭টি মৌলিক হাতের ও শরীরের নড়াচড়া বা গতিবিধি আবিষ্কার করেন, যা থারবলিগস (Therbligs) নামে পরিচিত।" },
+        { id: 48, year: "২০১৮", q: "ব্যবস্থাপনা গ্রিড (Managerial Grid) কে উদ্ভাবন করেন?", a: "রবার্ট আর. ব্লেক (Robert R. Blake) এবং জেন এস. মাউটন (Jane S. Mouton)।" },
+        { id: 49, year: "২০১৮", q: "স্বৈরতান্ত্রিক নেতৃত্ব কী?", a: "যে নেতৃত্ব ব্যবস্থায় নেতা ক্ষমতা ও কর্তৃত্ব নিজের কাছে কুক্ষিগত করে রাখেন এবং অধস্তনদের মতামতের কোনো তোয়াক্কা না করে একাই সব সিদ্ধান্ত নেন, তাকে স্বৈরতান্ত্রিক নেতৃত্ব বলে।" },
+        { id: 50, year: "২০১৮", q: "TQM-এর পূর্ণরূপ কী?", a: "TQM = Total Quality Management (সার্বিক মান ব্যবস্থাপনা)।" },
+        { id: 51, year: "২০১৮", q: "মানচক্র (Quality Circle) কী?", a: "মানচক্র হলো একই ধরনের কাজে নিযুক্ত একদল কর্মীর স্বেচ্ছাপ্রণোদিত একটি ছোট দল, যারা কাজের মান উন্নয়ন ও সমস্যা সমাধানের জন্য নিয়মিতভাবে সভায় মিলিত হয়।" },
+        { id: 52, year: "২০১৮", q: "শিল্প বিপ্লব কী?", a: "অষ্টাদশ শতাব্দীর শেষভাগে এবং উনবিংশ শতাব্দীর প্রথমভাগে ইংল্যান্ডে উৎপাদন ব্যবস্থায় কায়িক শ্রমের পরিবর্তে যন্ত্রপাতির ব্যবহারের ফলে যে ব্যাপক ও যুগান্তকারী পরিবর্তন সাধিত হয়, তাকে শিল্প বিপ্লব বলে।" },
+        { id: 53, year: "২০১৮", q: "বৈজ্ঞানিক ব্যবস্থাপনা কী?", a: "গতানুগতিক অবৈজ্ঞানিক ও বিশৃঙ্খলাপূর্ণ রীতিনীতির পরিবর্তে সুচিন্তিত ও বিজ্ঞানভিত্তিক পদ্ধতি প্রবর্তনের মাধ্যমে ব্যবস্থাপনার প্রতিটি কাজকে পরিচালিত করাকেই বৈজ্ঞানিক ব্যবস্থাপনা বলে।" },
+        { id: 54, year: "২০১৮", q: "চেইন অব কমান্ড (Chain of Command) কী?", a: "প্রতিষ্ঠানের সর্বোচ্চ স্তর থেকে সর্বনিম্ন স্তর পর্যন্ত কর্তৃত্বের যে নিরবচ্ছিন্ন রেখা বা শিকল নেমে আসে, তাকে চেইন অব কমান্ড বা আদেশের শৃঙ্খল বলে।" },
+        { id: 55, year: "২০১৮", q: "প্রেষণা কী?", a: "প্রতিষ্ঠানের লক্ষ্য অর্জনের জন্য কর্মীদের কাজের প্রতি উৎসাহিত, অনুপ্রাণিত এবং স্বপ্রণোদিত করার প্রক্রিয়াকে প্রেষণা (Motivation) বলে।" },
+        { id: 56, year: "২০১৮", q: "MBO-এর প্রবক্তা কে?", a: "MBO (Management by Objectives) বা উদ্দেশ্যভিত্তিক ব্যবস্থাপনার প্রবক্তা হলেন পিটার এফ. ড্রাকার (Peter F. Drucker)।" },
+        { id: 57, year: "২০১৯", q: "শিল্প বিপ্লব কী?", a: "অষ্টাদশ শতাব্দীর শেষভাগে এবং উনবিংশ শতাব্দীর প্রথমভাগে ইংল্যান্ডে উৎপাদন ব্যবস্থায় কায়িক শ্রমের পরিবর্তে যন্ত্রপাতির ব্যবহারের ফলে যে ব্যাপক ও যুগান্তকারী পরিবর্তন সাধিত হয়, তাকে শিল্প বিপ্লব বলে।" },
+        { id: 58, year: "২০১৯", q: "বৈজ্ঞানিক ব্যবস্থাপনা কী?", a: "গতানুগতিক অবৈজ্ঞানিক ও বিশৃঙ্খলাপূর্ণ রীতিনীতির পরিবর্তে সুচিন্তিত ও বিজ্ঞানভিত্তিক পদ্ধতি প্রবর্তনের মাধ্যমে ব্যবস্থাপনার প্রতিটি কাজকে পরিচালিত করাকেই বৈজ্ঞানিক ব্যবস্থাপনা বলে।" },
+        { id: 59, year: "২০১৯", q: "চেইন অব কমান্ড (Chain of Command) কী?", a: "প্রতিষ্ঠানের সর্বোচ্চ স্তর থেকে সর্বনিম্ন স্তর পর্যন্ত কর্তৃত্বের যে নিরবচ্ছিন্ন রেখা বা শিকল নেমে আসে, তাকে চেইন অব কমান্ড বা আদেশের শৃঙ্খল বলে।" },
+        { id: 60, year: "২০১৯", q: "প্রেষণা কী?", a: "প্রতিষ্ঠানের লক্ষ্য অর্জনের জন্য কর্মীদের কাজের প্রতি উৎসাহিত, অনুপ্রাণিত এবং স্বপ্রণোদিত করার প্রক্রিয়াকে প্রেষণা (Motivation) বলে।" },
+        { id: 61, year: "২০১৯", q: "TQM-এর পূর্ণরূপ কী?", a: "TQM-এর পূর্ণরূপ হলো Total Quality Management (সার্বিক মান ব্যবস্থাপনা)।" },
+        { id: 62, year: "২০১৯", q: "MBO-এর প্রবক্তা কে?", a: "MBO (Management by Objectives) বা উদ্দেশ্যভিত্তিক ব্যবস্থাপনার প্রবক্তা হলেন পিটার এফ. ড্রাকার (Peter F. Drucker)।" },
+        { id: 63, year: "২০১৯", q: "সিস্টেম বা প্রণালি কী?", a: "সিস্টেম বা প্রণালি হলো পরস্পর নির্ভরশীল ও সম্পর্কযুক্ত একাধিক উপাদানের সমন্বয়ে গঠিত এমন একটি সামগ্রিক রূপ, যা একটি নির্দিষ্ট লক্ষ্য অর্জনের জন্য একত্রে কাজ করে।" },
+        { id: 64, year: "২০১৯", q: "ব্যবস্থাপনা চিন্তাধারা কী?", a: "ব্যবস্থাপনাবিষয়ক জ্ঞানের উৎপত্তি ও ক্রমবিকাশ অনুসারে ব্যবস্থাপনাবিদগণের দৃষ্টিভঙ্গি ও ধারণাসমূহের সুশৃঙ্খল বিন্যাসকে ব্যবস্থাপনা চিন্তাধারা বলে।" },
+        { id: 65, year: "২০১৯", q: "'The Philosophy of Management' বইটির রচয়িতা কে?", a: "'The Philosophy of Management' বইটির রচয়িতা হলেন অলিভার শেলডন (Oliver Sheldon)।" },
+        { id: 66, year: "২০১৯", q: "হেনরি ফেয়লের বিখ্যাত গ্রন্থটির নাম কী?", a: "ফরাসি শিল্পপতি হেনরি ফেয়লের ইংরেজিতে প্রকাশিত বিখ্যাত গ্রন্থটির নাম হলো- General and Industrial Management." },
+        { id: 67, year: "২০১৯", q: "থারবলিগস (Therbligs) কী?", a: "ফ্র্যাংক গিলব্রেথ ও লিলিয়ান গিলব্রেথ কাজের গতি ও সময়কে বিশ্লেষণ করে ১৭টি মৌলিক হাতের ও শরীরের নড়াচড়া বা গতিবিধি আবিষ্কার করেন, যা থারবলিগস (Therbligs) নামে পরিচিত।" },
+        { id: 68, year: "২০১৯", q: "POSDCORB-এর প্রবক্তা কে?", a: "POSDCORB-এর প্রবক্তা হলেন লুথার গুলিক (Luther Gulick) এবং লিন্ডাল উরউইক (Lyndall Urwick)।" },
+        { id: 69, year: "২০২০", q: "ব্যবস্থাপনা চিন্তাধারা কী?", a: "ব্যবস্থাপনাবিষয়ক জ্ঞানের উৎপত্তি ও ক্রমবিকাশ অনুসারে ব্যবস্থাপনাবিদগণের দৃষ্টিভঙ্গি ও ধারণাসমূহের সুশৃঙ্খল বিন্যাসকে ব্যবস্থাপনা চিন্তাধারা বলে।" },
+        { id: 70, year: "২০২০", q: "'The Philosophy of Management' বইটির রচয়িতা কে?", a: "'The Philosophy of Management' বইটির রচয়িতা হলেন অলিভার শেলডন (Oliver Sheldon)।" },
+        { id: 71, year: "২০২০", q: "শিল্প বিপ্লব কী?", a: "অষ্টাদশ শতাব্দীর শেষভাগে এবং উনবিংশ শতাব্দীর প্রথমভাগে ইংল্যান্ডে উৎপাদন ব্যবস্থায় কায়িক শ্রমের পরিবর্তে যন্ত্রপাতির ব্যবহারের ফলে যে ব্যাপক ও যুগান্তকারী পরিবর্তন সাধিত হয়, তাকে শিল্প বিপ্লব বলে।" },
+        { id: 72, year: "২০২০", q: "হেনরি ফেয়লের বিখ্যাত গ্রন্থটির নাম কী?", a: "ফরাসি শিল্পপতি হেনরি ফেয়লের ইংরেজিতে প্রকাশিত বিখ্যাত গ্রন্থটির নাম হলো- General and Industrial Management." },
+        { id: 73, year: "২০২০", q: "বৈজ্ঞানিক ব্যবস্থাপনা কী?", a: "গতানুগতিক অবৈজ্ঞানিক ও বিশৃঙ্খলাপূর্ণ রীতিনীতির পরিবর্তে সুচিন্তিত ও বিজ্ঞানভিত্তিক পদ্ধতি প্রবর্তনের মাধ্যমে গঠনমূলক প্রক্রিয়ায় ব্যবস্থাপনার প্রতিটি কাজকে পরিকল্পিতভাবে লক্ষ্যার্জনের পথে পরিচালিত করাকেই বৈজ্ঞানিক ব্যবস্থাপনা বলে।" },
+        { id: 74, year: "২০২০", q: "থারবলিগস (Therbligs) কী?", a: "ফ্র্যাংক গিলব্রেথ ও লিলিয়ান গিলব্রেথ কাজের গতি ও সময়কে বিশ্লেষণ করে ১৭টি মৌলিক হাতের ও শরীরের নড়াচড়া বা গতিবিধি আবিষ্কার করেন, যা থারবলিগস (Therbligs) নামে পরিচিত।" },
+        { id: 75, year: "২০২০", q: "প্রেষণা কী?", a: "কর্মীদের কাজের প্রতি আগ্রহী ও উৎসাহিত করার প্রক্রিয়াকেই প্রেষণা বা Motivation বলে।" },
+        { id: 76, year: "২০২০", q: "POSDCORB-এর প্রবক্তা কে?", a: "POSDCORB-এর প্রবক্তা হলেন লুথার গুলিক (Luther Gulick) এবং লিন্ডাল উরউইক (Lyndall Urwick)।" },
+        { id: 77, year: "২০২০", q: "আমলাতন্ত্রের জনক কে?", a: "আমলাতন্ত্রের জনক হলেন ম্যাক্স ওয়েবার (Max Weber)।" },
+        { id: 78, year: "২০২০", q: "X ও Y তত্ত্বের প্রবক্তা কে?", a: "X ও Y তত্ত্বের প্রবক্তা হলেন ডগলাস ম্যাকগ্রেগর (Douglas McGregor)।" },
+        { id: 79, year: "২০২০", q: "ব্যবস্থাপনা গ্রিড (Managerial Grid) কে উদ্ভাবন করেন?", a: "রবার্ট আর. ব্লেক (Robert R. Blake) এবং জেন এস. মাউটন (Jane S. Mouton) ব্যবস্থাপনা গ্রিড উদ্ভাবন করেন।" },
+        { id: 80, year: "২০২০", q: "TQM-এর পূর্ণরূপ লেখ।", a: "TQM-এর পূর্ণরূপ হলো- Total Quality Management." },
+        { id: 81, year: "২০২১", q: "শিল্প বিপ্লবের প্রধান কারণ কী?", a: "শিল্প বিপ্লবের প্রধান কারণ হলো বাণিজ্যের বিকাশ ও ব্যবসায়ের উত্থান।" },
+        { id: 82, year: "২০২১", q: "বৈজ্ঞানিক ব্যবস্থাপনার দুটি উপাদান লেখ।", a: "১. উপযুক্ত কর্মী নির্বাচন এবং ২. দায়িত্ব ও কর্তব্যের সুষম বণ্টন।" },
+        { id: 83, year: "২০২১", q: "সময়-নিরীক্ষা কী?", a: "সময় নিরীক্ষা হলো কোনো শিল্পসংক্রান্ত কার্যসম্পাদনের প্রত্যেকটি উপাদানের জন্য প্রয়োজনীয় সময়ের পর্যবেক্ষণ ও লিপিবদ্ধকরণের কলা ও পদ্ধতি।" },
+        { id: 84, year: "২০২১", q: "CEO-এর পূর্ণরূপ লেখ।", a: "CEO-এর পূর্ণরূপ হলো- Chief Executive Officer." },
+        { id: 85, year: "২০২১", q: "নির্দেশনার ঐক্য কী?", a: "নির্দেশনার ঐক্য হলো প্রতিষ্ঠানের কার্যসমূহ একই উদ্দেশ্যকে সামনে রেখে পরিচালিত হবে।" },
+        { id: 86, year: "২০২১", q: "সিস্টেম মতবাদের প্রবক্তা কে?", a: "লুডভিক ভন ব্যার্টালানফি (Ludwig von Bertalanffy)।" },
+        { id: 87, year: "২০২১", q: "মোহনীয় নেতৃত্ব কী?", a: "নেতার মোহনীয় শক্তির দ্বারা অনুসারীদের উদ্বুদ্ধ, প্ররোচিত ও প্রভাবিত করার মাধ্যমে প্রতিষ্ঠান বা সংগঠনের উদ্দেশ্যার্জনের জন্য পরিচালিত করার প্রক্রিয়াকে মোহনীয় নেতৃত্ব বলে।" },
+        { id: 88, year: "২০২১", q: "অংশগ্রহণমূলক ব্যবস্থাপনা কাকে বলে?", a: "যে ব্যবস্থাপনায় নির্বাহী কর্মীদের সাথে আলাপ আলোচনা করে সিদ্ধান্ত গ্রহণ করেন তাকে অংশগ্রহণমূলক ব্যবস্থাপনা বলে।" },
+        { id: 89, year: "২০২১", q: "প্রত্যাশা কী?", a: "কাজের ফলাফলের আশা অর্থাৎ নির্দিষ্ট কার্যসম্পাদনে কর্মী কতটুকু আশাবাদী আর তার প্রচেষ্টা কতটা কার্যকরী হবে, কর্মীর এমন অনুভূতিকে প্রত্যাশা বলে।" },
+        { id: 90, year: "২০২১", q: "অনার্থিক প্রেষণার দুটি উদাহরণ দাও।", a: "অনার্থিক প্রেষণার দুটি উদাহরণ হলো ১. সামাজিক নিরাপত্তা এবং ২. স্বীকৃতি ও প্রশংসা।" },
+        { id: 91, year: "২০২১", q: "ব্যবস্থাপকীয় দক্ষতা কী?", a: "তুলনামূলক কম সময়ে মানসম্মত কার্য সম্পাদনের মাধ্যমে প্রাতিষ্ঠানিক লক্ষ্য অর্জনই হলো ব্যবস্থাপনার দক্ষতা।" },
+        { id: 92, year: "২০২১", q: "পরামর্শমূলক ব্যবস্থাপনা কী?", a: "যে ব্যবস্থাপনায় নেতা অধস্তন কর্মীদের সাথে আলাপ আলোচনা করে সিদ্ধান্ত নেন ও বাস্তবায়ন করেন তাকে পরামর্শমূলক ব্যবস্থাপনা বলে।" },
+        { id: 93, year: "২০২২", q: "ব্যবস্থাপনা ফলপ্রসূতা কী?", a: "ব্যবস্থাপনা ফলপ্রসূতা বলতে কোনো প্রতিষ্ঠানের লক্ষ্য অর্জনে ব্যবস্থাপনার কার্যক্রম কতটা সফল ও দক্ষতার সাথে পরিচালিত হচ্ছে তা বুঝায়।" },
+        { id: 94, year: "২০২২", q: "ক্যারিয়ার কী?", a: "পেশা বা ক্যারিয়ার বলতে এমন বৃত্তিমূলক সেবাকর্মকে বোঝায় যা থেকে ব্যক্তি তার জীবিকা নির্বাহ করে।" },
+        { id: 95, year: "২০২২", q: "প্রশাসনিক ব্যবস্থাপনা মতবাদের প্রবক্তা কে?", a: "প্রশাসনিক ব্যবস্থাপনা মতবাদের প্রবক্তা হেনরি ফেয়ল (Henri Fayol)।" },
+        { id: 96, year: "২০২২", q: "জঙ্গল তত্ত্ব কী?", a: "হ্যারল্ড কুঞ্জ ব্যবস্থাপনার বিভিন্ন মতবাদ, তত্ত্ব ও গবেষণা বিশ্লেষণ করে এ সিদ্ধান্তে উপনীত হয়েছেন যে, আজকের পরিস্থিতিতে ব্যবস্থাপনার অসংখ্য তত্ত্বকেই তিনি ব্যবস্থাপনার জঙ্গল তত্ত্ব বলে অভিহিত করেছেন।" },
+        { id: 97, year: "২০২২", q: "সিনার্জি কী?", a: "দুই বা ততোধিক ব্যক্তির পৃথকভাবে সম্পাদিত কার্য ব্যক্তিদ্বয়ের সম্পাদিত কার্যফল হলে ভিন্ন হওয়াকেই সিনার্জি বলে।" },
+        { id: 98, year: "২০২২", q: "জোড়ামই শিকল নীতি কী?", a: "সর্বোচ্চ সারি হতে নিম্ন সারি পর্যন্ত নির্বাহীর শৃঙ্খলকে জোড়ামই শিকল নীতি বলে।" },
+        { id: 99, year: "২০২২", q: "হথর্ন গবেষণার কর্ণধার কে?", a: "হথর্ন গবেষণার কর্ণধার এলটন মেয়ো (Elton Mayo)।" },
+        { id: 100, year: "২০২২", q: "'BIAM' এর পূর্ণরূপ লেখ।", a: "'BIAM' এর পূর্ণরূপ Bangladesh Institute of Administration and Management." },
+        { id: 101, year: "২০২২", q: "শিল্প বিপ্লবের প্রধান কারণ কী?", a: "শিল্প বিপ্লবের প্রধান কারণ হলো বাণিজ্যের বিকাশ ও ব্যবসায়ের উত্থান।" },
+        { id: 102, year: "২০২২", q: "বৈজ্ঞানিক ব্যবস্থাপনার দুটি উপাদান লেখ।", a: "১. উপযুক্ত কর্মী নির্বাচন এবং ২. দায়িত্ব ও কর্তব্যের সুষম বণ্টন।" },
+        { id: 103, year: "২০২২", q: "CEO-এর পূর্ণরূপ লেখ।", a: "CEO-এর পূর্ণরূপ হলো- Chief Executive Officer." },
+        { id: 104, year: "২০২২", q: "নির্দেশনার ঐক্য কী?", a: "নির্দেশনার ঐক্য হলো প্রতিষ্ঠানের কার্যসমূহ একই উদ্দেশ্যকে সামনে রেখে পরিচালিত হবে।" }
+    ];
+
+    // Local Storage State
+    let tickedQuestions = JSON.parse(localStorage.getItem('tickedQs')) || [];
+    let wrongQuestions = JSON.parse(localStorage.getItem('wrongQs')) || [];
+    let aiAnswers = JSON.parse(localStorage.getItem('aiAnswers')) || {};
+    let allAnswersVisible = false; 
+
+    // Exam State
+    let examSets = [];
+    let currentSetIndex = 0;
+    let currentSetQuestions = [];
+
+    $(document).ready(function() {
+        $('#total-q-count').text(qaData.length);
+        updateWrongCounter();
+        renderStudyMode();
+
+        $('#toggle-all-answers').click(function() {
+            $('.answer-box').slideToggle();
+            allAnswersVisible = !allAnswersVisible;
+            $(this).text(allAnswersVisible ? 'সব উত্তর লুকান' : 'সব উত্তর দেখুন')
+                   .toggleClass('btn-warning btn-outline-warning');
+        });
+
+        $('#start-exam-btn').click(() => setupExam(qaData));
+        
+        $('#start-wrong-exam-btn').click(() => {
+            if(wrongQuestions.length === 0) {
+                alert("আপনার পুলে কোনো ভুল উত্তর নেই! দারুণ!");
+                return;
+            }
+            let wrongData = qaData.filter(q => wrongQuestions.includes(q.id));
+            setupExam(wrongData);
+        });
+
+        $('#end-exam-btn, #back-to-study-btn').click(endExam);
+        
+        $('#finish-set-btn').click(finishExamSet);
+        
+        $('#next-set-btn').click(() => {
+            currentSetIndex++;
+            renderExamSet();
+        });
+    });
+
+    function updateWrongCounter() {
+        $('#wrong-q-count').text(wrongQuestions.length);
+    }
+
+    // AI Simplification API Call
+    async function getAIAnswer(id, originalText) {
+        if(aiAnswers[id]) {
+            toggleAIText(id);
+            return;
+        }
+
+        let apiKey = localStorage.getItem('GEMINI_API_KEY');
+        if(!apiKey) {
+            apiKey = prompt("🤖 AI ব্যবহার করতে আপনার বিনামূল্যে পাওয়া Gemini API Key দিন:\n(এটি আপনার ব্রাউজারে সেভ থাকবে)");
+            if(!apiKey) return;
+            localStorage.setItem('GEMINI_API_KEY', apiKey);
+        }
+
+        $(`#ai-btn-${id}`).text("অপেক্ষা করুন...");
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `Simplify this short answer in very easy Bengali. Keep it brief and accurate. Original text: "${originalText}"` }] }]
+                })
+            });
+            const data = await response.json();
+            
+            if(data.error) throw new Error(data.error.message);
+            
+            const simplifiedText = data.candidates[0].content.parts[0].text;
+            aiAnswers[id] = simplifiedText;
+            localStorage.setItem('aiAnswers', JSON.stringify(aiAnswers));
+            
+            $(`#ai-ans-${id}`).html(`<strong>সহজ উত্তর (AI):</strong> ${simplifiedText}`);
+            toggleAIText(id);
+        } catch(e) {
+            alert("AI Error: " + e.message + "\nআপনার API Key ঠিক আছে কিনা চেক করুন।");
+            localStorage.removeItem('GEMINI_API_KEY'); // delete invalid key
+        } finally {
+            $(`#ai-btn-${id}`).html("🤖 AI সহজ উত্তর");
+        }
+    }
+
+    function toggleAIText(id) {
+        let aiBox = $(`#ai-ans-${id}`);
+        let origBox = $(`#ans-${id}`);
+        
+        if(aiBox.is(':visible')) {
+            aiBox.hide();
+            origBox.show();
+            $(`#ai-btn-${id}`).html("🤖 AI সহজ উত্তর");
+        } else {
+            origBox.hide();
+            aiBox.html(`<strong>সহজ উত্তর (AI):</strong> ${aiAnswers[id]}`).show();
+            $(`#ai-btn-${id}`).html("📖 মূল উত্তর দেখুন (Undo)");
+        }
+    }
+
+    function renderStudyMode() {
+        let html = '';
+        qaData.forEach(item => {
+            let isTicked = tickedQuestions.includes(item.id);
+            let aiBtnText = aiAnswers[item.id] ? "🤖 AI সহজ উত্তর" : "🤖 AI দিয়ে সহজ করুন";
+            
+            html += `
+            <div class="card ${isTicked ? 'ticked' : ''}" id="card-${item.id}">
+                <div class="card-body">
+                    <div class="card-title"><span class="badge bg-info text-dark">${item.year}</span> ${item.q}</div>
+                    
+                    <div class="answer-box" id="ans-${item.id}"><strong>বইয়ের উত্তর:</strong> ${item.a}</div>
+                    <div class="ai-text" id="ai-ans-${item.id}"></div>
+
+                    <div class="action-bar">
+                        <button class="btn btn-sm btn-outline-primary" onclick="$('#ans-${item.id}').slideToggle(); $('#ai-ans-${item.id}').hide();">Show/Hide</button>
+                        <button class="btn btn-sm btn-outline-info ai-btn" id="ai-btn-${item.id}" onclick="getAIAnswer(${item.id}, '${item.a}')">${aiBtnText}</button>
+                        <button class="btn btn-sm ${isTicked ? 'btn-secondary' : 'btn-success'} tick-btn-${item.id} ms-auto" onclick="toggleTick(${item.id})">${isTicked ? 'Untick ❌' : 'Tick ✔️'}</button>
+                    </div>
+                </div>
+            </div>`;
+        });
+        $('#question-list').html(html);
+    }
+
+    function toggleTick(id) {
+        if (tickedQuestions.includes(id)) {
+            tickedQuestions = tickedQuestions.filter(qId => qId !== id); 
+        } else {
+            tickedQuestions.push(id); 
+        }
+        localStorage.setItem('tickedQs', JSON.stringify(tickedQuestions));
+        
+        // Update UI dynamically without full re-render
+        let isTicked = tickedQuestions.includes(id);
+        $(`#card-${id}, #exam-card-${id}`).toggleClass('ticked', isTicked);
+        $(`.tick-btn-${id}`).text(isTicked ? 'Untick ❌' : 'Tick ✔️')
+                            .toggleClass('btn-success btn-secondary');
+    }
+
+    // --- Exam Logic ---
+    function setupExam(dataSource) {
+        let numStr = prompt(`আপনার কাছে মোট ${dataSource.length} টি প্রশ্ন আছে। আপনি প্রতিটি সেটে কয়টি করে প্রশ্ন রাখতে চান? (যেমন: ১০)`);
+        let numPerSet = parseInt(numStr);
+        
+        if (isNaN(numPerSet) || numPerSet <= 0) {
+            alert("সঠিক সংখ্যা দিন!"); return;
+        }
+
+        // Shuffle Data
+        let shuffled = [...dataSource].sort(() => 0.5 - Math.random());
+        
+        // Chunk into Sets
+        examSets = [];
+        for (let i = 0; i < shuffled.length; i += numPerSet) {
+            examSets.push(shuffled.slice(i, i + numPerSet));
+        }
+
+        currentSetIndex = 0;
+        $('#study-mode').hide();
+        $('#exam-mode').fadeIn();
+        renderExamSet();
+    }
+
+    function renderExamSet() {
+        $('#score-board').hide();
+        $('#exam-controls').show();
+        
+        if (currentSetIndex >= examSets.length) {
+            endExam();
+            alert("সবগুলো সেট শেষ হয়েছে!");
+            return;
+        }
+
+        currentSetQuestions = examSets[currentSetIndex];
+        $('#exam-set-info').text(`Set ${currentSetIndex + 1} / ${examSets.length}`);
+
+        let html = '';
+        currentSetQuestions.forEach((item, index) => {
+            let isTicked = tickedQuestions.includes(item.id);
+            
+            html += `
+            <div class="card mb-3" id="exam-card-${item.id}">
+                <div class="card-body">
+                    <div class="card-title">প্রশ্ন ${index + 1}: ${item.q}</div>
+                    <textarea class="form-control exam-user-answer mb-2" rows="2" placeholder="আপনার উত্তর..."></textarea>
+                    
+                    <div class="answer-box" id="exam-ans-${item.id}"><strong>সঠিক উত্তর:</strong> ${item.a}</div>
+                    <div class="ai-text" id="exam-ai-ans-${item.id}">${aiAnswers[item.id] ? '<strong>AI উত্তর:</strong> ' + aiAnswers[item.id] : ''}</div>
+
+                    <div class="action-bar mt-2">
+                        <button class="btn btn-sm btn-primary" onclick="$('#exam-ans-${item.id}').slideToggle(); $('#exam-ai-ans-${item.id}').hide();">উত্তর মেলান</button>
+                        ${aiAnswers[item.id] ? `<button class="btn btn-sm btn-info" onclick="$('#exam-ans-${item.id}').hide(); $('#exam-ai-ans-${item.id}').slideToggle();">AI উত্তর দেখুন</button>` : ''}
+                        <button class="btn btn-sm ${isTicked ? 'btn-secondary' : 'btn-success'} tick-btn-${item.id} ms-auto" onclick="toggleTick(${item.id})">${isTicked ? 'সঠিক (Untick ❌)' : 'সঠিক হয়েছে (Tick ✔️)'}</button>
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        $('#exam-question-list').html(html);
+        window.scrollTo(0, 0);
+    }
+
+    function finishExamSet() {
+        let correctCount = 0;
+        
+        currentSetQuestions.forEach(q => {
+            if (tickedQuestions.includes(q.id)) {
+                correctCount++;
+                // Remove from wrong pool if it was there
+                wrongQuestions = wrongQuestions.filter(id => id !== q.id);
+            } else {
+                // Add to wrong pool if not ticked
+                if(!wrongQuestions.includes(q.id)) wrongQuestions.push(q.id);
+            }
+        });
+
+        localStorage.setItem('wrongQs', JSON.stringify(wrongQuestions));
+        updateWrongCounter();
+
+        $('#exam-question-list .answer-box').slideDown(); // Show all answers to review
+        $('#exam-controls').hide();
+        
+        $('#current-score').text(correctCount);
+        $('#set-total').text(currentSetQuestions.length);
+        
+        if(currentSetIndex === examSets.length - 1) {
+            $('#next-set-btn').hide();
+        } else {
+            $('#next-set-btn').show();
+        }
+        
+        $('#score-board').fadeIn();
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function endExam() {
+        $('#exam-mode').hide();
+        $('#study-mode').fadeIn();
+        $('.answer-box').hide(); 
+        allAnswersVisible = false;
+        $('#toggle-all-answers').text('সব উত্তর দেখুন').removeClass('btn-outline-warning').addClass('btn-warning');
+        renderStudyMode(); 
+        window.scrollTo(0, 0);
+    }
+</script>
+</body>
+</html>
